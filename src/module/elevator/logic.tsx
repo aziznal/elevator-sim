@@ -3,7 +3,7 @@ import { type PropsWithChildren, createContext, useContext } from 'react';
 import { exhaustiveGuard } from '../../lib/exhaustive-guard';
 
 type Floor = {
-  id: string;
+  id: number;
 };
 
 interface ElevatorControlPanel {
@@ -17,6 +17,17 @@ interface ElevatorControlPanel {
     | 'moving-down'
     | 'waiting-on-door'
     | 'panic'
+
+  // a method to act as a replacement to the sensor and circuitry that actually
+  // detect an elevator's position and other stuff
+  reportSensorState: (args: {
+    state:
+      | { name: 'door-fully-closed' }
+      | { name: 'door-fully-opened' }
+      // e.g. when someone puts their hand in the door as it closes
+      | { name: 'motion-sensor-detected' }
+      | { name: 'floor-reached'; floorId: Floor['id'] };
+  }) => void;
 
   currentFloor: Floor['id'] | null;
   queue: Array<Floor['id']>;
@@ -36,15 +47,15 @@ interface ElevatorControlPanel {
 }
 
 const FLOOR_ARRAY: Array<Floor> = [
-  { id: '1' },
-  { id: '2' },
-  { id: '3' },
-  { id: '4' },
-  { id: '5' },
-  { id: '6' },
-  { id: '7' },
-  { id: '8' },
-  { id: '9' },
+  { id: 1 },
+  { id: 2 },
+  { id: 3 },
+  { id: 4 },
+  { id: 5 },
+  { id: 6 },
+  { id: 7 },
+  { id: 8 },
+  { id: 9 },
 ];
 
 const ElevatorContext = createContext<ElevatorControlPanel | null>(null);
@@ -118,6 +129,21 @@ export const ElevatorContextProvider = ({ children }: PropsWithChildren) => {
     return queue.some((floorId) => floorId === args.floorId);
   };
 
+  const reportSensorState: ElevatorControlPanel['reportSensorState'] = (args) => {
+    const stateName = args.state.name;
+
+    switch(stateName) {
+      case 'door-fully-closed':
+      case 'door-fully-opened':
+      case 'floor-reached':
+      case 'motion-sensor-detected':
+        break;
+
+      default:
+        return exhaustiveGuard(stateName);
+    }
+  };
+
   // queue consumer
   useEffect(function takeNextQueueItem() {
     // TODO:
@@ -135,6 +161,8 @@ export const ElevatorContextProvider = ({ children }: PropsWithChildren) => {
         totalFloors: FLOOR_ARRAY.length,
 
         doorCloseTimeout,
+
+        reportSensorState,
 
         openDoor,
         closeDoor,

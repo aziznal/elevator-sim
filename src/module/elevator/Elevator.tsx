@@ -1,7 +1,7 @@
 import { LucideChevronLeft, LucideChevronRight, LucideSkull } from 'lucide-react';
 import { cn } from '../../lib/cn';
 import { ElevatorContextProvider, useElevatorContext } from './logic';
-import { motion } from 'motion/react';
+import { motion, spring } from 'motion/react';
 import { BrailleNumber } from '../../lib/components/BrailleNumber';
 
 export const Elevator = () => {
@@ -50,13 +50,13 @@ const ControlPanel = () => {
         {/* Indicator Grid */}
         <div className="flex gap-0.5 items-center">
           {/* Door indicator: opening */}
-          <ControlPanelDisplayIndicator>
+          <ControlPanelDisplayIndicator isActive={elevatorState === 'opening'}>
             <LucideChevronLeft />
             <LucideChevronRight className="-ml-1.5" />
           </ControlPanelDisplayIndicator>
 
           {/* Door indicator: closing */}
-          <ControlPanelDisplayIndicator>
+          <ControlPanelDisplayIndicator isActive={elevatorState === 'closing'}>
             <LucideChevronRight />
             <LucideChevronLeft className="-ml-1.5" />
           </ControlPanelDisplayIndicator>
@@ -108,7 +108,7 @@ const ControlPanelDisplayIndicator = (props: { children: React.ReactNode; isActi
 };
 
 const ElevatorVisualSimulation = () => {
-  const { floorArray } = useElevatorContext();
+  const { floorArray, elevatorState, openDoor, closeDoor, reportSensorState } = useElevatorContext();
 
   return (
     <div className="flex flex-col items-center h-full">
@@ -144,9 +144,53 @@ const ElevatorVisualSimulation = () => {
         {/* elevator */}
         <div className="h-full border-l border-l-gray-800 w-full rounded-tr-xl px-3">
           {/* chamber */}
-          <div className="border border-gray-600 h-[3rem] flex">
-            <div className="w-[50%] h-full bg-gray-500 border-r border-r-gray-600"></div>
-            <div className="w-[50%] h-full bg-gray-500"></div>
+          <div
+            className="border border-gray-600 h-[3rem] flex cursor-pointer overflow-x-clip"
+            onClick={elevatorState !== 'opening' ? openDoor : closeDoor}
+          >
+            {/* left door */}
+            <motion.div
+              className="w-[50%] h-full bg-gray-500 border-r border-r-gray-600"
+              animate={elevatorState === 'opening' ? 'open' : 'closed'}
+              variants={{
+                open: {
+                  translateX: '-1rem',
+                  transition: {
+                    ease: 'easeInOut',
+                    duration: 2,
+                  },
+                },
+                closed: {
+                  translateX: '0rem',
+                  transition: {
+                    ease: 'easeInOut',
+                    duration: 2,
+                  },
+                },
+              }}
+            />
+
+            {/* right door */}
+            <motion.div
+              className="w-[50%] h-full bg-gray-500"
+              animate={elevatorState === 'opening' ? 'open' : 'closed'}
+              variants={{
+                open: {
+                  translateX: '1rem',
+                  transition: {
+                    ease: 'easeInOut',
+                    duration: 2,
+                  },
+                },
+                closed: {
+                  translateX: '0rem',
+                  transition: {
+                    ease: 'easeInOut',
+                    duration: 2,
+                  },
+                },
+              }}
+            />
           </div>
         </div>
       </div>
