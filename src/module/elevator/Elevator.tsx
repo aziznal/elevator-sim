@@ -1,6 +1,8 @@
 import { LucideChevronLeft, LucideChevronRight, LucideSkull } from 'lucide-react';
 import { cn } from '../../lib/cn';
 import { ElevatorContextProvider, useElevatorContext } from './logic';
+import { motion } from 'motion/react';
+import { BrailleNumber } from '../../lib/components/BrailleNumber';
 
 export const Elevator = () => {
   return (
@@ -70,17 +72,20 @@ const ControlPanel = () => {
       <div className="flex flex-wrap gap-2 w-fit items-center justify-center">
         {floorArray.map((floor) => (
           <div key={`floor-button-${floor.id}`} className="flex flex-col gap-1 items-center justify-center">
-            <button
-              className={cn(
-                'size-12 rounded-full outline-2 font-bold cursor-pointer',
-                !isQueuedFloor({ floorId: floor.id }) && 'outline-gray-500 text-gray-100 bg-gray-700',
-                isQueuedFloor({ floorId: floor.id }) && 'outline-yellow-500 text-amber-700 bg-amber-200',
-              )}
-              onClick={() => pickFloor({ floorId: floor.id })}
-              onDoubleClick={() => unpickFloor({ floorId: floor.id })}
-            >
-              {floor.id}
-            </button>
+            <div className="shadow-[0rem_0.1rem] rounded-full bg-gray-400 p-1">
+              <button
+                className={cn(
+                  'size-12 rounded-full outline-2 font-bold cursor-pointer active:translate-y-[0.1rem] translate-y-[0rem] transition-[translate,scale] active:scale-[98%] flex flex-col items-center',
+                  !isQueuedFloor({ floorId: floor.id }) && 'outline-gray-500 text-gray-100 bg-gray-700',
+                  isQueuedFloor({ floorId: floor.id }) && 'outline-yellow-500 text-amber-700 bg-amber-200',
+                )}
+                onClick={() => pickFloor({ floorId: floor.id })}
+                onDoubleClick={() => unpickFloor({ floorId: floor.id })}
+              >
+                <span className="text-2xl mt-1">{floor.id}</span>
+                <BrailleNumber num={Number(floor.id)} />
+              </button>
+            </div>
           </div>
         ))}
       </div>
@@ -139,7 +144,10 @@ const ElevatorVisualSimulation = () => {
         {/* elevator */}
         <div className="h-full border-l border-l-gray-800 w-full rounded-tr-xl px-3">
           {/* chamber */}
-          <div className="border h-[3rem]"> </div>
+          <div className="border border-gray-600 h-[3rem] flex">
+            <div className="w-[50%] h-full bg-gray-500 border-r border-r-gray-600"></div>
+            <div className="w-[50%] h-full bg-gray-500"></div>
+          </div>
         </div>
       </div>
 
