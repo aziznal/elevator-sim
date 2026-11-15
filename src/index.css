@@ -1,1 +1,10 @@
-@import "tailwindcss";
+@import 'tailwindcss';
+
+@font-face {
+  font-family: seven-segment;
+  src: url(assets/fonts/SevenSegment.ttf);
+}
+
+.elevator-display-font {
+  font-family: seven-segment;
+}

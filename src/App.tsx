@@ -1,9 +1,9 @@
-export default function App() {
-  const foo = '';
+import { Elevator } from "./module/elevator/Elevator";
 
+export default function App() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-zinc-900">
-      <h1 className="text-4xl font-bold text-emerald-400">Tailwind works</h1>
+    <main className="flex min-h-dvh items-center justify-center bg-zinc-900 text-white">
+      <Elevator />
     </main>
   );
 }
