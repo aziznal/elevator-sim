@@ -30,6 +30,7 @@ interface ElevatorControlPanel {
   }) => void;
 
   currentFloor: Floor['id'] | null;
+  nextTargetFloor: Floor['id'] | null;
   queue: Array<Floor['id']>;
   floorArray: Array<Floor>;
   totalFloors: number;
@@ -58,6 +59,8 @@ const FLOOR_ARRAY: Array<Floor> = [
   { id: 9 },
 ];
 
+const ELEVATOR_DOOR_CLOSE_TIMEOUT_MS = 5_000;
+
 const ElevatorContext = createContext<ElevatorControlPanel | null>(null);
 
 export const useElevatorContext = (): ElevatorControlPanel => {
@@ -75,6 +78,9 @@ export const ElevatorContextProvider = ({ children }: PropsWithChildren) => {
   const [doorCloseTimeout, setDoorCloseTimeout] = useState(0);
 
   const openDoor = () => {
+    // check previous state:
+
+    // appropriate to open door
     switch (elevatorState) {
       case 'waiting-on-door':
       case 'closing':
@@ -82,10 +88,15 @@ export const ElevatorContextProvider = ({ children }: PropsWithChildren) => {
         setElevatorState('opening');
         break;
 
+      // redundant
       case 'open':
       case 'opening':
+
+      // dangerous
       case 'moving-down':
       case 'moving-up':
+
+      // traumatizing
       case 'panic':
         break;
 
@@ -96,16 +107,24 @@ export const ElevatorContextProvider = ({ children }: PropsWithChildren) => {
 
   const closeDoor = () => {
     switch (elevatorState) {
+      // check previous state
+
+      // appropriate to close
       case 'waiting-on-door':
       case 'open':
       case 'opening':
         setElevatorState('closing');
         break;
 
+      // redundant
       case 'closing':
       case 'closed-and-idle':
+
+      // dangerous
       case 'moving-down':
       case 'moving-up':
+
+      // traumatizing
       case 'panic':
         break;
 
@@ -121,6 +140,10 @@ export const ElevatorContextProvider = ({ children }: PropsWithChildren) => {
     setQueue((q) => q.filter((floorId) => floorId !== args.floorId));
   };
 
+  useEffect(() => {
+    console.log(queue);
+  }, [queue]);
+
   const panic = () => {
     // TODO:
   };
@@ -129,13 +152,45 @@ export const ElevatorContextProvider = ({ children }: PropsWithChildren) => {
     return queue.some((floorId) => floorId === args.floorId);
   };
 
+  const gotoNextQueued = () => {
+    console.log(queue);
+    // TODO:
+  };
+
+  const autoCloseDoor = () => {
+    const timeout = setTimeout(() => {
+      setElevatorState('closing');
+    }, ELEVATOR_DOOR_CLOSE_TIMEOUT_MS);
+    setDoorCloseTimeout(timeout);
+  };
+
   const reportSensorState: ElevatorControlPanel['reportSensorState'] = (args) => {
     const stateName = args.state.name;
 
-    switch(stateName) {
+    switch (stateName) {
       case 'door-fully-closed':
+        // if queue has floors, go to them
+        if (queue.length > 0) {
+          setElevatorState('moving-down');
+          gotoNextQueued();
+          break;
+        }
+
+        // otherwise, we just closed cuz we're chillin
+        setElevatorState('closed-and-idle');
+        break;
+
       case 'door-fully-opened':
+        setElevatorState('open');
+        autoCloseDoor();
+        break;
+
       case 'floor-reached':
+        setCurrentFloor(args.state.floorId);
+        setElevatorState('opening');
+        setQueue((q) => q.slice(1));
+        break;
+
       case 'motion-sensor-detected':
         break;
 
@@ -144,26 +199,18 @@ export const ElevatorContextProvider = ({ children }: PropsWithChildren) => {
     }
   };
 
-  // queue consumer
-  useEffect(function takeNextQueueItem() {
-    // TODO:
-  }, []);
-
   return (
     <ElevatorContext.Provider
       value={{
         elevatorState,
-
         currentFloor,
         queue,
-
+        nextTargetFloor: queue.at(0) ?? null,
         floorArray: FLOOR_ARRAY,
         totalFloors: FLOOR_ARRAY.length,
-
         doorCloseTimeout,
 
         reportSensorState,
-
         openDoor,
         closeDoor,
         pickFloor,

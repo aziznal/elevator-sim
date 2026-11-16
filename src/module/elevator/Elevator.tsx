@@ -1,7 +1,7 @@
-import { LucideChevronLeft, LucideChevronRight, LucideSkull } from 'lucide-react';
+import { LucideChevronDown, LucideChevronLeft, LucideChevronRight, LucideChevronUp, LucideSkull } from 'lucide-react';
 import { cn } from '../../lib/cn';
 import { ElevatorContextProvider, useElevatorContext } from './logic';
-import { motion, spring } from 'motion/react';
+import { motion } from 'motion/react';
 import { BrailleNumber } from '../../lib/components/BrailleNumber';
 
 export const Elevator = () => {
@@ -37,28 +37,35 @@ export const ElevatorInternal = () => {
 };
 
 const ControlPanel = () => {
-  const { elevatorState, currentFloor, floorArray, pickFloor, unpickFloor, isQueuedFloor } = useElevatorContext();
+  const { closeDoor, openDoor, elevatorState, currentFloor, floorArray, pickFloor, unpickFloor, isQueuedFloor } =
+    useElevatorContext();
 
   return (
     <div className="">
       {/* Helpful display */}
       <div className="h-[6.5rem] border rounded-lg mb-4 bg-gray-950 font-mono text-center flex flex-col items-center justify-center p-1.5">
         <span className="flex-1 flex items-center justify-center text-5xl tabular-nums font-bold elevator-display-font">
-          {currentFloor?.padStart(2, '0')}
+          {currentFloor?.toString()?.padStart(2, '0')}
         </span>
 
         {/* Indicator Grid */}
         <div className="flex gap-0.5 items-center">
-          {/* Door indicator: opening */}
           <ControlPanelDisplayIndicator isActive={elevatorState === 'opening'}>
             <LucideChevronLeft />
             <LucideChevronRight className="-ml-1.5" />
           </ControlPanelDisplayIndicator>
 
-          {/* Door indicator: closing */}
           <ControlPanelDisplayIndicator isActive={elevatorState === 'closing'}>
             <LucideChevronRight />
             <LucideChevronLeft className="-ml-1.5" />
+          </ControlPanelDisplayIndicator>
+
+          <ControlPanelDisplayIndicator isActive={elevatorState === 'moving-up'}>
+            <LucideChevronUp />
+          </ControlPanelDisplayIndicator>
+
+          <ControlPanelDisplayIndicator isActive={elevatorState === 'moving-down'}>
+            <LucideChevronDown />
           </ControlPanelDisplayIndicator>
 
           {/* death */}
@@ -72,22 +79,30 @@ const ControlPanel = () => {
       <div className="flex flex-wrap gap-2 w-fit items-center justify-center">
         {floorArray.map((floor) => (
           <div key={`floor-button-${floor.id}`} className="flex flex-col gap-1 items-center justify-center">
-            <div className="shadow-[0rem_0.1rem] rounded-full bg-gray-400 p-1">
-              <button
-                className={cn(
-                  'size-12 rounded-full outline-2 font-bold cursor-pointer active:translate-y-[0.1rem] translate-y-[0rem] transition-[translate,scale] active:scale-[98%] flex flex-col items-center',
-                  !isQueuedFloor({ floorId: floor.id }) && 'outline-gray-500 text-gray-100 bg-gray-700',
-                  isQueuedFloor({ floorId: floor.id }) && 'outline-yellow-500 text-amber-700 bg-amber-200',
-                )}
-                onClick={() => pickFloor({ floorId: floor.id })}
-                onDoubleClick={() => unpickFloor({ floorId: floor.id })}
-              >
-                <span className="text-2xl mt-1">{floor.id}</span>
-                <BrailleNumber num={Number(floor.id)} />
-              </button>
-            </div>
+            <PanelButton
+              isActive={isQueuedFloor({ floorId: floor.id })}
+              onClick={() => pickFloor({ floorId: floor.id })}
+              onDoubleClick={() => unpickFloor({ floorId: floor.id })}
+            >
+              <span className="text-2xl mt-1">{floor.id}</span>
+              <BrailleNumber num={Number(floor.id)} />
+            </PanelButton>
           </div>
         ))}
+
+        <PanelButton isActive={elevatorState === 'opening'} onClick={openDoor}>
+          <div className="flex items-center justify-center h-full">
+            <LucideChevronLeft />
+            <LucideChevronRight className="-ms-2" />
+          </div>
+        </PanelButton>
+
+        <PanelButton isActive={elevatorState === 'closing'} onClick={closeDoor}>
+          <div className="flex items-center justify-center h-full">
+            <LucideChevronRight />
+            <LucideChevronLeft className="-ms-2" />
+          </div>
+        </PanelButton>
       </div>
     </div>
   );
@@ -108,7 +123,8 @@ const ControlPanelDisplayIndicator = (props: { children: React.ReactNode; isActi
 };
 
 const ElevatorVisualSimulation = () => {
-  const { floorArray, elevatorState, openDoor, closeDoor, reportSensorState } = useElevatorContext();
+  const { floorArray, currentFloor, nextTargetFloor, elevatorState, openDoor, closeDoor, reportSensorState } =
+    useElevatorContext();
 
   return (
     <div className="flex flex-col items-center h-full">
@@ -123,7 +139,10 @@ const ElevatorVisualSimulation = () => {
               // ground floor is handled differently, so skip it
               .slice(1)
               .map((floor) => (
-                <div key={`floor-in-bulding-${floor.id}`} className="flex gap-5">
+                <div key={`floor-in-bulding-${floor.id}`} className="flex gap-5 relative">
+                  {/* floor number */}
+                  <span className={cn('absolute -left-10 mt-1 elevator-display-font opacity-20')}>{floor.id}</span>
+
                   <div className="h-[2rem] w-[1.5rem] border rounded-sm"></div>
                   <div className="h-[2rem] w-[1.5rem] border rounded-sm"></div>
                   <div className="h-[2rem] w-[1.5rem] border rounded-sm"></div>
@@ -144,14 +163,32 @@ const ElevatorVisualSimulation = () => {
         {/* elevator */}
         <div className="h-full border-l border-l-gray-800 w-full rounded-tr-xl px-3">
           {/* chamber */}
-          <div
+          <motion.div
             className="border border-gray-600 h-[3rem] flex cursor-pointer overflow-x-clip"
             onClick={elevatorState !== 'opening' ? openDoor : closeDoor}
+            variants={Object.fromEntries(
+              floorArray.map((floor) => [floor.id.toString(), { translateY: 20 * floor.id }]),
+            )}
+            animate={nextTargetFloor?.toString()}
+            onAnimationComplete={() =>
+              reportSensorState({
+                state: { name: 'floor-reached', floorId: nextTargetFloor! },
+              })
+            }
           >
+            {nextTargetFloor}
             {/* left door */}
             <motion.div
               className="w-[50%] h-full bg-gray-500 border-r border-r-gray-600"
-              animate={elevatorState === 'opening' ? 'open' : 'closed'}
+              animate={elevatorState === 'opening' || elevatorState === 'open' ? 'open' : 'closed'}
+              onAnimationComplete={() =>
+                reportSensorState({
+                  state: {
+                    // whatever state the elevator was in last, has just reached its fully state
+                    name: elevatorState === 'closing' ? 'door-fully-closed' : 'door-fully-opened',
+                  },
+                })
+              }
               variants={{
                 open: {
                   translateX: '-1rem',
@@ -173,7 +210,7 @@ const ElevatorVisualSimulation = () => {
             {/* right door */}
             <motion.div
               className="w-[50%] h-full bg-gray-500"
-              animate={elevatorState === 'opening' ? 'open' : 'closed'}
+              animate={elevatorState === 'opening' || elevatorState === 'open' ? 'open' : 'closed'}
               variants={{
                 open: {
                   translateX: '1rem',
@@ -191,7 +228,7 @@ const ElevatorVisualSimulation = () => {
                 },
               }}
             />
-          </div>
+          </motion.div>
         </div>
       </div>
 
@@ -210,3 +247,26 @@ const SectionTitle = (props: { children: React.ReactNode }) => {
 };
 
 Section.Title = SectionTitle;
+
+const PanelButton = (props: {
+  children: React.ReactNode;
+  isActive: boolean;
+  onClick?: () => void;
+  onDoubleClick?: () => void;
+}) => {
+  return (
+    <div className="shadow-[0rem_0.1rem] rounded-full bg-gray-400 p-1">
+      <button
+        className={cn(
+          'size-12 rounded-full outline-2 font-bold cursor-pointer active:translate-y-[0.1rem] translate-y-[0rem] transition-[translate,scale] active:scale-[98%] flex flex-col items-center',
+          !props.isActive && 'outline-gray-500 text-gray-100 bg-gray-700',
+          props.isActive && 'outline-yellow-500 text-amber-700 bg-amber-200',
+        )}
+        onPointerDown={props.onClick}
+        onDoubleClick={props.onDoubleClick}
+      >
+        {props.children}
+      </button>
+    </div>
+  );
+};
